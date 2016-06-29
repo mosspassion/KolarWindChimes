@@ -63,10 +63,14 @@
 // mp3 variables
 SFEMP3Shield MP3player;
 byte result;
-int lastPlayed = 0;
+int lastPlayed = 1;
+int e8 = 0; // time in ms for TRACK008.mp3
+int e9 = 0; // time in ms for TRACK009.mp3
+int e10 = 0; // time in ms for TRACK010.mp3
+int e11 = 0; // time in ms for TRACK011.mp3
 
 // mp3 behaviour defines
-#define REPLAY_MODE FALSE  // By default, touching an electrode repeatedly will 
+#define REPLAY_MODE FALSE // By default, touching an electrode repeatedly will 
                           // play the track again from the start each time.
                           //
                           // If you set this to FALSE, repeatedly touching an 
@@ -85,7 +89,7 @@ void setup(){
   
   pinMode(LED_BUILTIN, OUTPUT);
    
-  //while (!Serial) ; {} //uncomment when using the serial monitor 
+  while (!Serial) ; {} //uncomment when using the serial monitor 
   Serial.println("Bare Conductive Touch MP3 player");
 
   if(!sd.begin(SD_SEL, SPI_HALF_SPEED)) sd.initErrorHalt();
@@ -109,8 +113,21 @@ void setup(){
 
 void loop(){
   readTouchInputs();
-}
 
+  // loop install track
+  if (!MP3player.isPlaying() && lastPlayed == 0) playInstall(); 
+
+  // loop tracks
+  for (int i=8; i < 12; i++){
+    if (!MP3player.isPlaying() && lastPlayed == i){
+      volumeDown();
+      MP3player.stopTrack();
+      MP3player.playTrack(i-firstPin);
+      volumeUp();
+      lastPlayed = i;
+    }
+  }
+}
 
 void readTouchInputs(){
   if(MPR121.touchStatusChanged()){
@@ -121,82 +138,58 @@ void readTouchInputs(){
     // ignore multiple touches
     
     if(MPR121.getNumTouches()<=1){
-      for (int i=0; i < 12; i++){  // Check which electrodes were pressed
+      for (int i=8; i < 12; i++){  // Check which electrodes were pressed
         if(MPR121.isNewTouch(i)){
         
-          //pin i was just touched
-          Serial.print("pin ");
-          Serial.print(i);
-          Serial.println(" was just touched");
-          digitalWrite(LED_BUILTIN, HIGH);
-
-//--------------------------------- NickDavis pause/resume -----------
-          if(i<=lastPin && i>=firstPin){
-            if(MP3player.isPlaying()){
-              if(lastPlayed==i){
-
-                for(int i = 10; i >= 0; i--){
-                  delay(5);
-                  MP3player.setVolume(i,i);
-                } 
-              
-                MP3player.pauseMusic();
-                Serial.print("pausing track ");
-                Serial.println(i-firstPin);
-              }
+            //pin i was just touched
+            Serial.print("pin ");
+            Serial.print(i);
+            Serial.println(" was just touched");
+            digitalWrite(LED_BUILTIN, HIGH);
             
-            else if(MP3player.isPlaying() == false){
-              if(lastPlayed==i){
-                for(int i = 0; i <= 10; i++){
-                  delay(5);
-                  MP3player.setVolume(i,i);
+            if(i<=lastPin && i>=firstPin){
+              if(MP3player.isPlaying()){
+                if(lastPlayed==i && !REPLAY_MODE){                  
+                  // if we're already playing the requested track, stop it
+                  // (but only if we're in REPLAY_MODE)
+                  volumeDown();
+                  if(i == 8) e8 = MP3player.currentPosition();
+                  else if(i == 9) e9 = MP3player.currentPosition();
+                  else if(i == 10) e10 = MP3player.currentPosition();
+                  else if(i == 11) e11 = MP3player.currentPosition();
+                  MP3player.stopTrack();
+                  Serial.print("pausing track ");
+                  Serial.println(i-firstPin);
+                } else {
+                  // if we're already playing a different track (or we're in
+                  // REPLAY_MODE), stop and play the newly requested one
+                  volumeDown();
+                  MP3player.stopTrack();
+                  MP3player.playTrack(i-firstPin);
+                  if(i == 8) MP3player.skipTo(e8);
+                  else if(i == 9) MP3player.skipTo(e9);
+                  else if(i == 10) MP3player.skipTo(e10);
+                  else if(i == 11) MP3player.skipTo(e11);
+                  volumeUp();
+                  Serial.print("playing track ");
+                  Serial.print(i-firstPin);
+                  Serial.println(" from last paused");
+                  // don't forget to update lastPlayed - without it we don't
+                  // have a history
+                  lastPlayed = i;
                 }
-                
-                MP3player.resumeMusic();
-                Serial.print("resuming track ");
+              } // done with if MP3player.isPlaying()
+              
+              else {
+                // if we're playing nothing, play the requested track 
+                // and update lastplayed
+                MP3player.playTrack(i-firstPin);
+                Serial.print("playing track ");
                 Serial.println(i-firstPin);
+                lastPlayed = i;
               }
-            }
-          }
-            
-          else{
-            // if we're already playing a different track (or we're in
-            // REPLAY_MODE), stop and play the newly requested one
-            for(int i = 10; i >= 0; i--){
-              delay(5);
-              MP3player.setVolume(i,i);
-            } 
-            MP3player.stopTrack();
-
-            MP3player.playTrack(i-firstPin);
-            for(int i = 0; i <= 10; i++){
-              delay(5);
-              MP3player.setVolume(i,i);
-            }
-
-            Serial.print("playing track ");
-            Serial.println(i-firstPin);
-            
-            // don't forget to update lastPlayed - without it we don't
-            // have a history
-            lastPlayed = i;
-          }
-
-          else{
-            // if we're playing nothing, play the requested track 
-            // and update lastplayed
-
-            for(int i = 0; i <= 10; i++){
-              delay(5);
-              MP3player.setVolume(i,i);
-            }
-            
-            MP3player.playTrack(i-firstPin);
-            Serial.print("playing track ");
-            Serial.println(i-firstPin);
-            lastPlayed = i;
-          }
-        }
+            } // done with if pin touched is the same pin touched previously
+        } // done with isNewTouch()
         
         else{
           if(MPR121.isNewRelease(i)){
@@ -204,10 +197,56 @@ void readTouchInputs(){
             Serial.print(i);
             Serial.println(" is no longer being touched");
             digitalWrite(LED_BUILTIN, LOW);
-            } 
-          }
-        }
-      }
+          } // done with isNewRelease()
+        } 
+      } // done with for loop of check which electrode was touched
+    } // done with getNumTouches()
+
+    if(MPR121.isNewTouch(0)){
+      Serial.print("pin ");
+      Serial.print(0);
+      Serial.println(" was just touched");
+      digitalWrite(LED_BUILTIN, HIGH);
+      playInstall();
     }
+    else{
+      if(MPR121.isNewRelease(0)){
+        Serial.print("pin ");
+        Serial.print(0);
+        Serial.println(" is no longer being touched");
+        digitalWrite(LED_BUILTIN, LOW);
+      } // done with isNewRelease()
+    }
+  } // done with touchStatusChanged()
+} // done with readTouchInputs()
+
+//---------------mosspassionPlayInstallationTrack---------------
+void playInstall(){
+  volumeDown();
+  MP3player.stopTrack();
+  MP3player.playTrack(0);
+  volumeUp();
+  lastPlayed = 0;
+}
+//---------------mosspassionPlayInstallationTrack---------------
+
+//---------------mosspassionVolume---------------
+// this is a linear volume ramp from 0 to 10 over 50 ms
+void volumeUp(){
+  Serial.println("turning volume up");
+  for(int i = 0; i <= 50; i++){
+    delay(1);
+    MP3player.setVolume(i * 0.2, i * 0.2);
   }
 }
+
+// this is a linear volume ramp from 10 to 0 over 50 ms
+void volumeDown(){
+  Serial.println("turning volume down");
+  for(int i = 50; i >= 0; i--){
+    delay(1);
+    MP3player.setVolume(i * 0.2, i * 0.2);
+  } 
+}
+//---------------mosspassionVolume---------------
+
