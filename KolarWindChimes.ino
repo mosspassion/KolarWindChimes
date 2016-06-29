@@ -64,10 +64,10 @@
 SFEMP3Shield MP3player;
 byte result;
 int lastPlayed = 1;
-int e8 = 0; // time in ms for TRACK008.mp3
-int e9 = 0; // time in ms for TRACK009.mp3
-int e10 = 0; // time in ms for TRACK010.mp3
-int e11 = 0; // time in ms for TRACK011.mp3
+int e8 = 0; // time in ms for Track008.mp3
+int e9 = 0; // time in ms for Track009.mp3
+int e10 = 0; // time in ms for Track010.mp3
+int e11 = 0; // time in ms for Track011.mp3
 
 // mp3 behaviour defines
 #define REPLAY_MODE FALSE // By default, touching an electrode repeatedly will 
@@ -117,16 +117,16 @@ void loop(){
   // loop install track
   if (!MP3player.isPlaying() && lastPlayed == 0) playInstall(); 
 
-  // loop tracks
-  for (int i=8; i < 12; i++){
-    if (!MP3player.isPlaying() && lastPlayed == i){
-      volumeDown();
-      MP3player.stopTrack();
-      MP3player.playTrack(i-firstPin);
-      volumeUp();
-      lastPlayed = i;
-    }
-  }
+  // loop tracks - i think this is broken
+//  for (int i=8; i < 12; i++){
+//    if (!MP3player.isPlaying() && lastPlayed == i){
+//      volumeDown();
+//      MP3player.stopTrack();
+//      MP3player.playTrack(i-firstPin);
+//      volumeUp();
+//      lastPlayed = i;
+//    }
+//  }
 }
 
 void readTouchInputs(){
@@ -160,20 +160,53 @@ void readTouchInputs(){
                   MP3player.stopTrack();
                   Serial.print("pausing track ");
                   Serial.println(i-firstPin);
+                  Serial.print("E8 paused at ");
+                  Serial.print(e8);
+                  Serial.println(" ms");
+                  Serial.print("E9 paused at ");
+                  Serial.print(e9);
+                  Serial.println(" ms");
+                  Serial.print("E10 paused at ");
+                  Serial.print(e10);
+                  Serial.println(" ms");
+                  Serial.print("E11 paused at ");
+                  Serial.print(e11);
+                  Serial.println(" ms");
                 } else {
                   // if we're already playing a different track (or we're in
                   // REPLAY_MODE), stop and play the newly requested one
                   volumeDown();
                   MP3player.stopTrack();
                   MP3player.playTrack(i-firstPin);
-                  if(i == 8) MP3player.skipTo(e8);
-                  else if(i == 9) MP3player.skipTo(e9);
-                  else if(i == 10) MP3player.skipTo(e10);
-                  else if(i == 11) MP3player.skipTo(e11);
+                  if(i == 8){ 
+                    Serial.print("playing track ");
+                    Serial.print(i-firstPin);
+                    Serial.print(" from ");
+                    Serial.println(e8);
+                    MP3player.skipTo(e8);
+                  }
+                  else if(i == 9){ 
+                    Serial.print("playing track ");
+                    Serial.print(i-firstPin);
+                    Serial.print(" from ");
+                    Serial.println(e9);
+                    MP3player.skipTo(e9);
+                  }
+                  else if(i == 10){
+                    Serial.print("playing track ");
+                    Serial.print(i-firstPin);
+                    Serial.print(" from ");
+                    Serial.println(e10);
+                    MP3player.skipTo(e10);
+                  }
+                  else if(i == 11){
+                    Serial.print("playing track ");
+                    Serial.print(i-firstPin);
+                    Serial.print(" from ");
+                    Serial.println(e11);
+                    MP3player.skipTo(e11);
+                  }
                   volumeUp();
-                  Serial.print("playing track ");
-                  Serial.print(i-firstPin);
-                  Serial.println(" from last paused");
                   // don't forget to update lastPlayed - without it we don't
                   // have a history
                   lastPlayed = i;
