@@ -64,10 +64,6 @@
 SFEMP3Shield MP3player;
 byte result;
 int lastPlayed = 1;
-int e8 = 0; // time in ms for Track008.mp3
-int e9 = 0; // time in ms for Track009.mp3
-int e10 = 0; // time in ms for Track010.mp3
-int e11 = 0; // time in ms for Track011.mp3
 
 // mp3 behaviour defines
 #define REPLAY_MODE FALSE // By default, touching an electrode repeatedly will 
@@ -89,7 +85,7 @@ void setup(){
   
   pinMode(LED_BUILTIN, OUTPUT);
    
-  while (!Serial) ; {} //uncomment when using the serial monitor 
+  //while (!Serial) ; {} //uncomment when using the serial monitor 
   Serial.println("Bare Conductive Touch MP3 player");
 
   if(!sd.begin(SD_SEL, SPI_HALF_SPEED)) sd.initErrorHalt();
@@ -115,19 +111,9 @@ void loop(){
   readTouchInputs();
 
   // loop install track
-  if (!MP3player.isPlaying() && lastPlayed == 0) playInstall(); 
-
-  // loop tracks - i think this is broken
-//  for (int i=8; i < 12; i++){
-//    if (!MP3player.isPlaying() && lastPlayed == i){
-//      volumeDown();
-//      MP3player.stopTrack();
-//      MP3player.playTrack(i-firstPin);
-//      volumeUp();
-//      lastPlayed = i;
-//    }
-//  }
+  if (!MP3player.isPlaying() && lastPlayed == 0) playInstall();
 }
+
 
 void readTouchInputs(){
   if(MPR121.touchStatusChanged()){
@@ -149,92 +135,48 @@ void readTouchInputs(){
             
             if(i<=lastPin && i>=firstPin){
               if(MP3player.isPlaying()){
-                if(lastPlayed==i && !REPLAY_MODE){                  
+                if(lastPlayed==i && !REPLAY_MODE){
                   // if we're already playing the requested track, stop it
                   // (but only if we're in REPLAY_MODE)
                   volumeDown();
-                  if(i == 8) e8 = MP3player.currentPosition();
-                  else if(i == 9) e9 = MP3player.currentPosition();
-                  else if(i == 10) e10 = MP3player.currentPosition();
-                  else if(i == 11) e11 = MP3player.currentPosition();
                   MP3player.stopTrack();
-                  Serial.print("pausing track ");
+                  Serial.print("stopping track ");
                   Serial.println(i-firstPin);
-                  Serial.print("E8 paused at ");
-                  Serial.print(e8);
-                  Serial.println(" ms");
-                  Serial.print("E9 paused at ");
-                  Serial.print(e9);
-                  Serial.println(" ms");
-                  Serial.print("E10 paused at ");
-                  Serial.print(e10);
-                  Serial.println(" ms");
-                  Serial.print("E11 paused at ");
-                  Serial.print(e11);
-                  Serial.println(" ms");
                 } else {
                   // if we're already playing a different track (or we're in
                   // REPLAY_MODE), stop and play the newly requested one
                   volumeDown();
                   MP3player.stopTrack();
                   MP3player.playTrack(i-firstPin);
-                  if(i == 8){ 
-                    Serial.print("playing track ");
-                    Serial.print(i-firstPin);
-                    Serial.print(" from ");
-                    Serial.println(e8);
-                    MP3player.skipTo(e8);
-                  }
-                  else if(i == 9){ 
-                    Serial.print("playing track ");
-                    Serial.print(i-firstPin);
-                    Serial.print(" from ");
-                    Serial.println(e9);
-                    MP3player.skipTo(e9);
-                  }
-                  else if(i == 10){
-                    Serial.print("playing track ");
-                    Serial.print(i-firstPin);
-                    Serial.print(" from ");
-                    Serial.println(e10);
-                    MP3player.skipTo(e10);
-                  }
-                  else if(i == 11){
-                    Serial.print("playing track ");
-                    Serial.print(i-firstPin);
-                    Serial.print(" from ");
-                    Serial.println(e11);
-                    MP3player.skipTo(e11);
-                  }
                   volumeUp();
+                  Serial.print("playing track ");
+                  Serial.println(i-firstPin);
+                  
                   // don't forget to update lastPlayed - without it we don't
                   // have a history
                   lastPlayed = i;
                 }
-              } // done with if MP3player.isPlaying()
-              
-              else {
+              } else {
                 // if we're playing nothing, play the requested track 
                 // and update lastplayed
+                volumeDown();
                 MP3player.playTrack(i-firstPin);
                 Serial.print("playing track ");
                 Serial.println(i-firstPin);
+                volumeUp();
                 lastPlayed = i;
               }
-            } // done with if pin touched is the same pin touched previously
-        } // done with isNewTouch()
-        
-        else{
+            }     
+        }else{
           if(MPR121.isNewRelease(i)){
             Serial.print("pin ");
             Serial.print(i);
             Serial.println(" is no longer being touched");
             digitalWrite(LED_BUILTIN, LOW);
-          } // done with isNewRelease()
-        } 
-      } // done with for loop of check which electrode was touched
-    } // done with getNumTouches()
-
+         } 
+        }
+      }
+    }
     if(MPR121.isNewTouch(0)){
       Serial.print("pin ");
       Serial.print(0);
@@ -250,10 +192,9 @@ void readTouchInputs(){
         digitalWrite(LED_BUILTIN, LOW);
       } // done with isNewRelease()
     }
-  } // done with touchStatusChanged()
-} // done with readTouchInputs()
+  }
+}
 
-//---------------mosspassionPlayInstallationTrack---------------
 void playInstall(){
   volumeDown();
   MP3player.stopTrack();
@@ -261,25 +202,21 @@ void playInstall(){
   volumeUp();
   lastPlayed = 0;
 }
-//---------------mosspassionPlayInstallationTrack---------------
 
-//---------------mosspassionVolume---------------
-// this is a linear volume ramp from 0 to 10 over 50 ms
+// this is a linear volume ramp from 0 to 10 over 10 ms
 void volumeUp(){
   Serial.println("turning volume up");
-  for(int i = 0; i <= 50; i++){
+  for(int i = 0; i <= 10; i++){
     delay(1);
-    MP3player.setVolume(i * 0.2, i * 0.2);
+    MP3player.setVolume(i , i);
   }
 }
 
-// this is a linear volume ramp from 10 to 0 over 50 ms
+// this is a linear volume ramp from 10 to 0 over 10 ms
 void volumeDown(){
   Serial.println("turning volume down");
-  for(int i = 50; i >= 0; i--){
+  for(int i = 10; i >= 0; i--){
     delay(1);
-    MP3player.setVolume(i * 0.2, i * 0.2);
+    MP3player.setVolume(i , i);
   } 
 }
-//---------------mosspassionVolume---------------
-
